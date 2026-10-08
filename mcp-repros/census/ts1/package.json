@@ -1,0 +1,8 @@
+{
+  "name": "ts1-census",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "1.32.1"
+  }
+}

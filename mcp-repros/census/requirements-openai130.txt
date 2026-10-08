@@ -1,0 +1,7 @@
+# the same framework pinned to the mcp 1.x line, to show which layer injects traceparent
+openai-agents==0.23.1
+openai==3.26.1
+mcp==1.30.0
+opentelemetry-api==1.45.1
+opentelemetry-sdk==1.45.1
+pydantic==2.14.0

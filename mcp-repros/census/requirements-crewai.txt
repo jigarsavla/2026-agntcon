@@ -1,0 +1,9 @@
+# resolved on 2026-10-08; crewai pulls mcp 1.28.1
+crewai==1.15.25
+crewai-core==1.15.25
+crewai-tools==1.15.25
+mcp==1.28.1
+opentelemetry-api==1.45.1
+opentelemetry-sdk==1.45.1
+pydantic==2.12.5
+anyio==4.15.1

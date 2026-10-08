@@ -1,0 +1,8 @@
+# the same framework pinned to the mcp 1.x line (pip resolves fastmcp-slim 3.4.8)
+pydantic-ai-slim[mcp]==2.54.0
+pydantic-graph==2.54.0
+fastmcp-slim==3.4.8
+mcp==1.30.0
+opentelemetry-api==1.45.1
+opentelemetry-sdk==1.45.1
+pydantic==2.14.0

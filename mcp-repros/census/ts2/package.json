@@ -1,0 +1,8 @@
+{
+  "name": "ts2-census",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@modelcontextprotocol/client": "2.3.1"
+  }
+}
