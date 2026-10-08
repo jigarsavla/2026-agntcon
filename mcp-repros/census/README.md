@@ -20,7 +20,7 @@ python3 -m venv v130 && v130/bin/pip install -r requirements-server-mcp1.30.0.tx
 (cd ts2 && npm install && node client.mjs $PWD/../runs/ts2 $PWD/../v23/bin/python without)
 (cd ts1 && npm install && node client.mjs $PWD/../runs/ts1 $PWD/../v23/bin/python without)
 
-# frameworks, one venv each (requirements-<name>.txt is a pip freeze of the run)
+# frameworks, one venv each (requirements-<name>.txt pins the packages that decide the result)
 fw/openai/bin/python   fw_openai_agents.py runs/openai  v23/bin/python 0   # max_retry_attempts
 fw/crewai/bin/python   fw_crewai.py        runs/crewai  v23/bin/python
 fw/pydantic/bin/python fw_pydantic_ai.py   runs/pydantic v23/bin/python
