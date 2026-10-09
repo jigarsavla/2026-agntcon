@@ -1,0 +1,5 @@
+syntax = "proto3";
+package inference;
+service Inference { rpc Infer (InferRequest) returns (stream InferChunk) {} }
+message InferRequest { int32 prompt_tokens=1; int32 max_output_tokens=2; int32 tokens_per_chunk=3; string workload=4; }
+message InferChunk { string text=1; int32 tokens_in_chunk=2; int32 chunk_index=3; double t_server_ms=4; bool finished=5; }

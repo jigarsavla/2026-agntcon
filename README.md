@@ -4,84 +4,80 @@ Reliability lessons from tool-calling inference systems. Companion repository fo
 poster at **AGNTCon + MCPCon North America 2026**, San Jose, Thursday October 22, 2026,
 poster session 5:45 to 7:00 PM in the Solutions Showcase.
 
-Jigar Kuverji Savla, Product Lead for AI Inference Systems at Tensordyne.
+Jigar Kuverji Savla, Product Lead for AI Inference Systems @ Tensordyne.
 jigar@tensordyne.ai | mail@jigarsavla.com
+
+Every number on the poster comes from a run in this repo. Each folder below reruns one
+tile in minutes on a laptop, with its requirements pinned.
 
 ## The story in one paragraph
 
 An agent turn does not end when the model emits its last token. The result crosses the
-transport, a router, often separate prefill and decode workers, the client that runs the
-tool call, and the state that must be back in place before the next turn starts. The
-painful failures happen at those boundaries, after the model has done its job. The one
-number every dashboard already has, call duration, cannot tell a fast turn from a slow
-one. Two ordinary streaming numbers can: when the first message arrived and how far apart
-the messages were. The transport can emit both without knowing what a model is.
+transport, the model server, the client that runs the tool call, and the state that must
+be back in place before the next turn starts. The painful failures happen at those
+boundaries, after the model has done its job. The fix is to treat the turn as one
+traceable transaction: track time to first message beside call duration, put an
+idempotency key on every write, carry the trace in `_meta` at every hop, and make the
+sampler wait past your slowest turn.
 
-## One agent turn crosses seven boundaries
+## Which folder reruns which tile
 
-In order: the user request, the model server, the tool-call decision, the client or
-orchestration layer that runs the tool, the structured result returned to the model, the
-resumed generation path, and the infrastructure that keeps state alive across that flow.
-Each one is a place for stale state, replayed tool results, lost context, hidden batching
-delays, bad routing, or partial failure to show up as a bad user experience.
+| tile | what the poster shows | folder | how long |
+|---|---|---|---|
+| **1** | **826 ms vs 45 ms.** Same total time; time to first message more than an order of magnitude apart. | [`time-to-first-message/`](time-to-first-message/) | about 15 s |
+| **2** | **1 of 8.** Only CrewAI re-sends a timed-out tool call by default; OpenAI Agents does with retries on, LangGraph on resume. All eight skip the idempotency key; with one, 0 duplicates in 20 runs. | [`mcp-repros/census/`](mcp-repros/census/) and [`mcp-repros/`](mcp-repros/) (the 20-run replay) | a few minutes per framework |
+| **3** | **5 of 10.** Your tool call leaves your trace unless something puts it in `_meta`. Google ADK and Microsoft's Agent Framework add it themselves; the rest inherit whichever mcp version they pin. | [`mcp-repros/census/`](mcp-repros/census/) | a few minutes per framework |
+| **4** | **0 of 6.** A "keep anything slower than 1 s" sampler keeps the fast turns and drops the slow ones once a turn outlives its decision wait. It sees 51 ms of a 12 s trace. | [`tail-sampling/`](tail-sampling/) | about 3 minutes |
 
-## Four measured failures at the boundaries
+## How the framework census works (tiles 2 and 3)
 
-All measurements: loopback, single host, CPython, simulated model cost. The transport and
-the timing are real; the GPU is not.
+One stub MCP server with one tool, `create_order`. The tool writes the order to a ledger
+file **before** it replies, then stalls past the client's timeout, which is exactly the
+case where a retry creates a second order. A small logger sits on the wire between the
+framework and the server and records the JSON-RPC id and `_meta` of every request, so the
+counts come from what was actually sent, not from what the framework reports. Each
+framework runs with a fake model (no API keys, no network), against the server on both
+mcp lines (2.3.0 and 1.30.0), and writes one row: requests on the wire, orders in the
+ledger, and whether the server's tool span joined the agent's trace.
 
-| number | what it means | failure mode |
-|---|---|---|
-| **826 ms vs 45 ms** | Two calls with the same 1 s duration. Time to first message differs by more than an order of magnitude. Call duration cannot tell them apart. | hidden batching delays |
-| **4 of 6** | Trace-header mixes (`traceparent` and `grpc-trace-bin`) across five hops that broke the trace. Every call returned OK. | lost context |
-| **0 of 6** | Streams over 3 s kept by a 1 s latency policy with a 2 s decision wait. At 2 s it kept 6 of 6. The sampler saw 51 ms of a 12 s trace. The sampler is a re-implementation from the Collector README, see [`tail-sampling/`](tail-sampling/). | partial failure |
-| **150 ms** | A slower KV copy from the prefill worker to the decode worker. Neither worker's clock covers the copy, so neither server metric moved. | partial failure |
-
-Not yet measured: stale state, replayed tool results, bad routing.
-
-## Treat the turn as one traceable transaction
-
-The reference path for MCP-style agent infrastructure has four layers. Tool execution
-stays client-side (design). The inference layer detects tool-call intent (the transport
-timing here is measured). The API layer routes by model and session state (design). The
-serving layer tracks KV cache, device health, shard placement, and queueing delay as
-first-class signals (the KV copy here is measured).
-
-Four fixes, each one something a platform team can do this week:
-
-1. **Two histograms at the transport read boundary**: time to first message and
-   inter-message gap. Same buckets and labels as gRPC's existing A66 metrics,
-   experimental and off by default, the shape gRFC A96 already took.
-2. **Both trace headers at every hop**: extract and inject `traceparent` and
-   `grpc-trace-bin`. One wrong hop breaks the trace.
-3. **Tail-sampler decision wait above the p99 stream duration**, then
-   `OTEL_METRICS_EXEMPLAR_FILTER=always_on`. The first fix is what makes the second
-   worth having.
-4. **Run the contract test on your dashboard**: is each metric you depend on emitted,
-   labeled, stable, bucketed, joinable. My own dashboard passed 4 of its 11 assumptions.
+Frameworks in the census: CrewAI 1.15.25, OpenAI Agents SDK 0.23.1, Pydantic AI 2.54.0,
+Langflow 1.12.5, LangGraph 1.2.14 with langchain-mcp-adapters 0.3.2, Google ADK 2.11.0,
+Microsoft Agent Framework 1.21.0, and the Claude Agent SDK 0.2.165 (its bundled Claude
+Code CLI is the MCP client). SDK lines: Python mcp 2.x, TypeScript 1.32.1 and 2.3.1.
+Rows from both runs are in `mcp-repros/census/runs/`, and the census README has the table.
 
 ## What's here
 
 | folder | what it is |
 |---|---|
-| [`poster/`](poster/) | The poster as printed, 36 x 24 in PDF. |
-| [`contract-test/`](contract-test/) | The telemetry contract test. A CI check for your dashboard's assumptions. Point it at your own stack. |
-| [`tail-sampling/`](tail-sampling/) | The repro behind "0 of 6". A re-implementation of the Collector's tail-sampling processor written from its README, line by line. Run it against a real Collector and tell me where it diverges. |
+| [`mcp-repros/`](mcp-repros/) | The lost-response replay (20 logical calls, 40 effects without a key, 20 with one) and the first trace check across the MCP boundary. |
+| [`mcp-repros/census/`](mcp-repros/census/) | The framework census rig: stub server, wire logger, one script per framework, pinned requirements, every row. |
+| [`time-to-first-message/`](time-to-first-message/) | Tile 1. A real streaming call over loopback with a simulated model cost; prints total time and time to first message for a prefill-heavy and a decode-heavy request. |
+| [`tail-sampling/`](tail-sampling/) | Tile 4. The OpenTelemetry Collector's tail-sampling processor rebuilt from its README, line by line, plus the experiment that shows the inversion. Run it against a real Collector and tell me where it diverges. |
 
-The measurements, the demo recording, and the fuller 17-check contract live in the
-gRPConf companion repo: [jigarsavla/2026-grpconf](https://github.com/jigarsavla/2026-grpconf).
+Tiles 1 and 4 were first built for the September 2026 gRPConf talk, so their test traffic
+is a gRPC stream; the findings are about streaming calls and tail sampling in general, not
+about gRPC. The fuller telemetry contract test and the talk's demo recording live in
+[jigarsavla/2026-grpconf](https://github.com/jigarsavla/2026-grpconf).
+
+## Caveats
+
+One machine, CPython 3.13, stdio transport for MCP, loopback for the streams, a fake or
+simulated model everywhere. The wire and the timing are real; the GPU is not. The tail
+sampler is a rebuild from the Collector README, not the Collector binary. Version numbers
+are the ones that resolved on October 8 and 9, 2026.
 
 ## Primary sources
 
-[gRFC A66](https://github.com/grpc/proposal/blob/master/A66-otel-stats.md) ·
-[A79](https://github.com/grpc/proposal/blob/master/A79-non-per-call-metrics-architecture.md) ·
-[A80](https://github.com/grpc/proposal/blob/master/A80-tcp-telemetry.md) ·
-[A96](https://github.com/grpc/proposal/blob/master/A96-retry-otel-stats.md) ·
-[A108](https://github.com/grpc/proposal/blob/master/A108-otel-custom-per-call-label.md) ·
-[OpenTelemetry semantic conventions v1.40.0](https://github.com/open-telemetry/semantic-conventions/releases/tag/v1.40.0) ·
-[GenAI semantic conventions](https://github.com/open-telemetry/semantic-conventions-genai/blob/main/docs/gen-ai/gen-ai-metrics.md) ·
-[Collector tail sampling processor README](https://github.com/open-telemetry/opentelemetry-collector-contrib/blob/main/processor/tailsamplingprocessor/README.md)
+[MCP specification 2026-07-28](https://modelcontextprotocol.io/specification/2026-07-28)
+(SEP-414 trace context in `_meta`, SEP-2575 re-issue after a lost response) ·
+[modelcontextprotocol issue #3394](https://github.com/modelcontextprotocol/modelcontextprotocol/issues/3394) ·
+[OpenTelemetry GenAI semantic conventions](https://github.com/open-telemetry/semantic-conventions-genai) ·
+[Collector tail sampling processor README](https://github.com/open-telemetry/opentelemetry-collector-contrib/blob/main/processor/tailsamplingprocessor/README.md) ·
+[langgraph issue #9185](https://github.com/langchain-ai/langgraph/issues/9185) ·
+[langflow PR #15460](https://github.com/langflow-ai/langflow/pull/15460)
 
 ## License
 
-GPL-3.0, the same license as the gRPConf repo.
+GPL-3.0 (see [`LICENSE`](LICENSE)), the same license as the gRPConf repo the
+`time-to-first-message/` and `tail-sampling/` code comes from.
