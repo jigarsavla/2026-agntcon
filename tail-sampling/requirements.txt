@@ -1,0 +1,9 @@
+grpcio==1.84.0
+grpcio-tools==1.84.0
+protobuf==7.36.2
+opentelemetry-api==1.45.1
+opentelemetry-sdk==1.45.1
+opentelemetry-semantic-conventions==0.66b1
+# exp_d (the cost ledger) also needs these two:
+grpcio-observability==1.84.0
+opentelemetry-exporter-otlp-proto-common==1.45.1

@@ -1,0 +1,21 @@
+syntax = "proto3";
+package tailsampling;
+
+message GenerateRequest {
+  int32 prompt_tokens = 1;
+  int32 max_tokens    = 2;
+  int32 stall_at      = 3;   // token index at which to inject a stall (-1 = none)
+  int32 stall_ms      = 4;
+  string workload     = 5;
+}
+
+message Chunk {
+  string text   = 1;
+  int32  index  = 2;
+  int32  tokens = 3;
+  bool   final  = 4;
+}
+
+service Inference {
+  rpc Generate (GenerateRequest) returns (stream Chunk);
+}
