@@ -1,0 +1,4 @@
+claude-agent-sdk==0.2.165
+# bundles Claude Code CLI 2.1.294 (claude_agent_sdk/_bundled/claude, native binary); no npm install needed
+opentelemetry-sdk==1.45.1
+opentelemetry-api==1.45.1

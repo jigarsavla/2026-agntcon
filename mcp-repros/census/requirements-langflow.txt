@@ -1,0 +1,12 @@
+# Langflow census row: packages that decide the result (fw/langflow venv, Python 3.13.16)
+langflow==1.12.5
+langflow-base==1.12.4
+lfx==1.12.5
+mcp==1.30.0
+fastmcp==3.4.8
+fastmcp-slim==3.4.8
+opentelemetry-api==1.45.1
+opentelemetry-sdk==1.45.1
+opentelemetry-instrumentation-mcp==0.62.4
+anyio==4.15.1
+pydantic==2.13.5

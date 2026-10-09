@@ -1,0 +1,12 @@
+# Microsoft Agent Framework census row (fw/maf). agent-framework-core 1.21.0 declares
+# mcp>=1.24.0,<2 (only under its "all" extra); mcp 2.x fails at connect (see runs/maf-mcp2-v23).
+agent-framework-core==1.21.0
+mcp==1.30.0
+opentelemetry-api==1.45.1
+opentelemetry-sdk==1.45.1
+opentelemetry-semantic-conventions==0.66b1
+anyio==4.15.1
+pydantic==2.14.0
+pydantic-core==2.50.0
+httpx==0.28.1
+# variant venv fw/maf-mcp2 (not runnable): agent-framework-core==1.21.0 mcp==2.3.0 mcp-types==2.3.0 httpx2==2.13.1
